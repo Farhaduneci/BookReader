@@ -51,6 +51,36 @@ class BookReader:
             book_id = self.cursor.fetchone()
             return book_id[0] if book_id is not None else None
 
+    def get_number_of_chapters(self, book):
+        book_id = self.get_book_id(book)
+        if book_id is None:
+            return 0
+        with self.connection:
+            self.cursor.execute(
+                "SELECT COUNT(*) FROM Chapters WHERE book_id = ?", (book_id,))
+            return self.cursor.fetchone()[0]
+
+    def get_number_of_completed_chapters(self, book):
+        book_id = self.get_book_id(book)
+        if book_id is None:
+            return 0
+        with self.connection:
+            self.cursor.execute("""
+                SELECT COUNT(*) FROM Progress
+                JOIN Chapters ON Progress.chapter_id = Chapters.id
+                WHERE Progress.percent >= Chapters.req_percent AND Chapters.book_id =
+                ?
+            """, (book_id,))
+            return self.cursor.fetchone()[0]
+
+    def get_chapters(self, book_id):
+        if book_id is None:
+            return []
+        with self.connection:
+            self.cursor.execute(
+                "SELECT id FROM Chapters WHERE book_id = ?", (book_id,))
+            return [chapter[0] for chapter in self.cursor.fetchall()]
+
     def _create_tables(self):
         with self.connection:
             self.cursor.execute("""
@@ -66,9 +96,26 @@ class BookReader:
                     title TEXT NOT NULL,
                     book_id INTEGER NOT NULL,
                     req_percent INTEGER NOT NULL,
-                    pre_req_id INTEGER,
-                    FOREIGN KEY(book_id) REFERENCES Books(id),
-                    FOREIGN KEY(pre_req_id) REFERENCES Chapters(id)
+                    FOREIGN KEY(book_id) REFERENCES Books(id)
+                );
+            """)
+
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Chapters_Prereqs(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chapter_id INTEGER NOT NULL,
+                    prereq_id INTEGER NOT NULL,
+                    FOREIGN KEY(chapter_id) REFERENCES Chapters(id),
+                    FOREIGN KEY(prereq_id) REFERENCES Chapters(id)
+                );
+            """)
+
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Progress(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    percent INTEGER NOT NULL,
+                    chapter_id INTEGER NOT NULL UNIQUE,
+                    FOREIGN KEY(chapter_id) REFERENCES Chapters(id)
                 );
             """)
             self.connection.commit()
@@ -97,7 +144,9 @@ class CommandDispatcher:
         pass
 
     def _stats(self, book):
-        pass
+        chapters_count = self._reader.get_number_of_chapters(book)
+        completed_count = self._reader.get_number_of_completed_chapters(book)
+        print(f"{completed_count} of {chapters_count}")
 
     def _add_chapter(self, book_name, chapter_name, required_percent):
         self._reader.add_chapter(book_name, chapter_name, required_percent)
