@@ -277,6 +277,8 @@ def main():
     dispatcher = CommandDispatcher(reader)
 
     while (command := input("Enter Command: ")) != 'end':
+        if command == "":
+            continue
         dispatcher.dispatch(command)
 
 
