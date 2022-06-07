@@ -31,7 +31,63 @@ class BookReader:
             self.connection.commit()
 
     def add_progress(self, book, chapter, percent):
-        pass
+        if self.has_book(book) and self.has_chapter(book, chapter):
+            if self.has_completed_prereqs(book, chapter):
+                if self.has_progress(book, chapter):
+                    with self.connection:
+                        chapter_id = self.get_chapter_id(book, chapter)
+                        self.cursor.execute("""
+                            UPDATE Progress
+                            SET percent = ?
+                            WHERE chapter_id = ?
+                        """, (percent, chapter_id))
+                        self.connection.commit()
+                else:
+                    with self.connection:
+                        chapter_id = self.get_chapter_id(book, chapter)
+                        self.cursor.execute("""
+                            INSERT INTO Progress(chapter_id, percent)
+                            VALUES(?, ?)
+                        """, (chapter_id, percent))
+                        self.connection.commit()
+
+    def has_progress(self, book, chapter):
+        chapter_id = self.get_chapter_id(book, chapter)
+        if chapter_id is None:
+            return False
+        with self.connection:
+            self.cursor.execute("""
+                SELECT * FROM Progress WHERE chapter_id = ?
+            """, (chapter_id,))
+            return self.cursor.fetchone() is not None
+
+    def has_completed_prereqs(self, book, chapter):
+        return True if \
+            self.get_number_of_completed_prereqs(book, chapter) == \
+            self.get_number_of_prereqs(book, chapter) else False
+
+    def get_number_of_prereqs(self, book, chapter):
+        chapter_id = self.get_chapter_id(book, chapter)
+        if chapter_id is None:
+            return 0
+        with self.connection:
+            self.cursor.execute(
+                "SELECT COUNT(*) FROM Chapters_Prereqs WHERE chapter_id = ?", (chapter_id,))
+            return self.cursor.fetchone()[0]
+
+    def get_number_of_completed_prereqs(self, book, chapter):
+        chapter_id = self.get_chapter_id(book, chapter)
+        if chapter_id is None:
+            return 0
+        with self.connection:
+            self.cursor.execute("""
+                SELECT COUNT(*) FROM Chapters_Prereqs
+                JOIN Chapters ON Chapters_Prereqs.prereq_id = Chapters.id
+                JOIN Progress ON Chapters.id = Progress.chapter_id
+                WHERE Chapters_Prereqs.chapter_id = ? AND Progress.percent >=
+                Chapters.req_percent
+            """, (chapter_id,))
+            return self.cursor.fetchone()[0]
 
     def add_prereq(self, book, chapter, prereq):
         if self.has_book(book) and self.has_chapter(book, chapter) and self.has_chapter(book, prereq):
