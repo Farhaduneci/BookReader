@@ -215,6 +215,7 @@ class CommandDispatcher:
     def __init__(self, reader):
         self._reader = reader
         self._commands = {
+            'help': self.help,
             'read': self._read,
             'stats': self._stats,
             'add_chapter': self._add_chapter,
@@ -227,8 +228,25 @@ class CommandDispatcher:
         self._handle_command(command, *parameters)
 
     def _handle_command(self, command, *parameters):
-        self._commands[command](
-            *parameters) if parameters else self._commands[command]()
+        if command in self._commands:
+            try:
+                self._commands[command](
+                    *parameters) if parameters else self._commands[command]()
+            except Exception as e:
+                print(f"ERROR :: {e}")
+        else:
+            print('Unknown command: {}'.format(command))
+
+    def help(self):
+        print("""
+            Available commands:
+            help - Prints this message
+            read - Reads a book
+            stats - Prints stats about the current progress
+            add_chapter - Adds a chapter to the current book
+            add_prerequisite_chapter - Adds a prerequisite chapter to the current chapter
+            remove_prerequisite_chapter - Removes a prerequisite chapter from the current chapter
+        """)
 
     def _read(self, book_name, chapter_name, percent):
         self._reader.add_progress(book_name, chapter_name, percent)
@@ -250,12 +268,15 @@ class CommandDispatcher:
 
 
 def main():
+    print("Welcome to the reader!")
+    print("Type 'help' for a list of commands.")
+
     conn = sqlite3.connect("Reader.db")
 
     reader = BookReader(conn)
     dispatcher = CommandDispatcher(reader)
 
-    while (command := input()) != 'end':
+    while (command := input("Enter Command: ")) != 'end':
         dispatcher.dispatch(command)
 
 
