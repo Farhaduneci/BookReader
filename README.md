@@ -18,13 +18,13 @@ the following commands were implemented in the program:
 
 1. Adding a new chapter:
    `add_chapter book_name chapter_name required_percent`
-2. Adding prerequisite chapter:
+1. Adding prerequisite chapter:
    `add_prerequisite_chapter book_name chapter_name prerequisite_chapter_name`
-3. Deleting prerequisite chapter:
+2. Deleting prerequisite chapter:
    `remove_prerequisite_chapter book_name chapter_name prerequisite_chapter_name`
-4. Reading a chapter:
+3. Reading a chapter:
    `read book_name chapter_name percent`
-5. Getting a reading status of a book:
+4. Getting a reading status of a book:
    `stats book_name`
 
    This command prints the number of chapters read and the total
@@ -32,7 +32,7 @@ the following commands were implemented in the program:
 
    `completed_chapters_count of all_chapters_count`
 
-6. Exit the application:
+5. Exit the application:
    `end`
 
 ## Demo
