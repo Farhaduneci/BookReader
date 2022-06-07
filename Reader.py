@@ -11,7 +11,25 @@ class BookReader:
         pass
 
     def _create_tables(self):
-        pass
+        with self.connection:
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Books(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL UNIQUE
+                );
+            """)
+
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Chapters(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    book_id INTEGER NOT NULL,
+                    pre_req_id INTEGER,
+                    FOREIGN KEY(book_id) REFERENCES Books(id),
+                    FOREIGN KEY(pre_req_id) REFERENCES Chapters(id)
+                );
+            """)
+            self.connection.commit()
 
 
 class CommandDispatcher:
