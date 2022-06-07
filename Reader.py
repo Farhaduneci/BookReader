@@ -30,6 +30,31 @@ class BookReader:
                 """, (chapter, book_id, RP))
             self.connection.commit()
 
+    def add_progress(self, book, chapter, percent):
+        pass
+
+    def add_prereq(self, book, chapter, prereq):
+        if self.has_book(book) and self.has_chapter(book, chapter) and self.has_chapter(book, prereq):
+            with self.connection:
+                chapter_id = self.get_chapter_id(book, chapter)
+                prereq_id = self.get_chapter_id(book, prereq)
+                self.cursor.execute("""
+                    INSERT INTO Chapters_Prereqs(chapter_id, prereq_id)
+                    VALUES(?, ?)
+                """, (chapter_id, prereq_id))
+                self.connection.commit()
+
+    def del_prereq(self, book, chapter, prereq):
+        if self.has_book(book) and self.has_chapter(book, chapter) and self.has_chapter(book, prereq):
+            with self.connection:
+                chapter_id = self.get_chapter_id(book, chapter)
+                prereq_id = self.get_chapter_id(book, prereq)
+                self.cursor.execute("""
+                    DELETE FROM Chapters_Prereqs
+                    WHERE chapter_id = ? AND prereq_id = ?
+                """, (chapter_id, prereq_id))
+                self.connection.commit()
+
     def has_chapter(self, book, chapter):
         book_id = self.get_book_id(book)
         if book_id is None:
@@ -50,6 +75,15 @@ class BookReader:
                 "SELECT id FROM Books WHERE title = ?", (book,))
             book_id = self.cursor.fetchone()
             return book_id[0] if book_id is not None else None
+
+    def get_chapter_id(self, book, chapter):
+        book_id = self.get_book_id(book)
+        if book_id is None:
+            return None
+        with self.connection:
+            self.cursor.execute(
+                "SELECT id FROM Chapters WHERE title = ? AND book_id = ?", (chapter, book_id))
+            return self.cursor.fetchone()[0]
 
     def get_number_of_chapters(self, book):
         book_id = self.get_book_id(book)
@@ -141,7 +175,7 @@ class CommandDispatcher:
             *parameters) if parameters else self._commands[command]()
 
     def _read(self, book_name, chapter_name, percent):
-        pass
+        self._reader.add_progress(book_name, chapter_name, percent)
 
     def _stats(self, book):
         chapters_count = self._reader.get_number_of_chapters(book)
@@ -152,10 +186,11 @@ class CommandDispatcher:
         self._reader.add_chapter(book_name, chapter_name, required_percent)
 
     def _add_prerequisite_chapter(self, book_name, chapter_name, prerequisite_chapter):
-        pass
+        self._reader.add_prereq(book_name, chapter_name, prerequisite_chapter)
 
     def _remove_prerequisite_chapter(self, book_name, chapter_name, prerequisite_chapter):
-        pass
+        self._reader.remove_prereq(
+            book_name, chapter_name, prerequisite_chapter)
 
 
 def main():
